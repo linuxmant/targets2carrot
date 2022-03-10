@@ -43,7 +43,7 @@ class Config:
 
 
 class Library:
-    def __init__(self, config: Config):
+    def __init__(self, config: [Config]):
         self.config = config
 
     def __str__(self):
