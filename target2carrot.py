@@ -63,9 +63,7 @@ def process_lab_format(params):
 
         library = Library(config)
 
-        # open output file: 'application-carrot.lcms.yml'
-        with open(f'{params["filename"]}.yml', 'w') as output:
-            yaml.dump(library, output, explicit_start=False)
+        save_yaml(library, params['outfile'])
 
     except UnicodeDecodeError as err:
         print(f'Error in file {params["filename"] + params["ext"]}\n{str(err)}')
@@ -100,18 +98,24 @@ def process_new_format(params):
 
         library = Library(config)
 
-        # open output file: 'application-carrot.lcms.yml'
-        with open(f'{params["filename"]}.yml', 'w') as output:
-            yaml.dump(vars(library), output)
+        save_yaml(library, params['outfile'])
 
     except UnicodeDecodeError as err:
         print(f'Error in file {params["filename"] + params["ext"]}\n{str(err)}')
         exit(1)
 
 
+def save_yaml(library, outfile):
+    with open(outfile, 'w') as output:
+        yaml.dump(vars(library), output, explicit_start=False)
+        print(f'file {outfile} saved...')
+
+
 def convert(params):
     for fileidx in trange(len(params['files'])):
         params['filename'], params['ext'] = os.path.splitext(params['files'][fileidx])
+        params['outfile'] = params.get('filename', '').replace(' ', '') + '.yml'
+
         try:
             tmp = params['filename'].split('/')[-1].split('-')
             params['study'], params['instrument'], params['column'] = tmp[0:3]
@@ -145,7 +149,6 @@ if __name__ == "__main__":
 
     def noop(self, *args, **kw):
         pass
-
 
     yaml.emitter.Emitter.process_tag = noop
 

@@ -1,7 +1,7 @@
 from typing import Collection
 
 ION_MODES = {
-    'posotive': ['positive', 'pos', 'p', '+'],
+    'positive': ['positive', 'pos', 'p', '+'],
     'negative': ['negative', 'neg', 'n', '-']
 }
 
