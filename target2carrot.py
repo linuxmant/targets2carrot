@@ -8,7 +8,7 @@ import pandas as pd
 import yaml
 from tqdm import tqdm, trange
 
-from models import Target, Config, Library
+from models import Target, Config, Library, ION_MODES
 
 ADDUCTS_ACETATE = ['[M+HAc-H]-', '[M+Hac-H]-']
 SKIP_NAMES = ['CSH_posESI', 'CSH posESI', 'CSH_negESI', 'CSH negESI', 'unknown']
@@ -58,7 +58,8 @@ def process_lab_format(params):
                 print(f'Error in target #{target["name"]} -- {params["filename"] + params["ext"]}')
                 exit(1)
 
-        config = Config(params['study'], params['instrument'], targets, params['mode'])
+        config = Config(name=params['study'], instrument=params['instrument'], targets=targets, column=params['column'],
+                        mode=params['mode'])
 
         library = Library(config)
 
@@ -83,9 +84,9 @@ def process_new_format(params):
                 if any([x.lower() in target['name'].lower() for x in SKIP_NAMES]):
                     continue
 
-                t = Target(target['name'], target['accurateMass'], target['retentionTime'], target['retentionTimeUnit'],
-                           target['isInternalStandard'], target['requiredForCorrection'], target['confirmed'],
-                           target['msms'], 0)
+                t = Target(name=target['name'], mz=target['accurateMass'], rt=target['retentionTime'],
+                           rt_unit=target['retentionTimeUnit'], msms=target['msms'],
+                           adduct=target['adduct'], inchikey=target['inchikey'])
 
                 if params['formate'] and any([adduct in target['name'] for adduct in ADDUCTS_ACETATE]):
                     targets.append(calculate_formate(t))
@@ -111,14 +112,13 @@ def process_new_format(params):
 def convert(params):
     for fileidx in trange(len(params['files'])):
         params['filename'], params['ext'] = os.path.splitext(params['files'][fileidx])
-        print(params)
         try:
-            tmp = params['filename'].split('/')[-1]
-            params['study'], params['instrument'], params['column'], params['mode'] = tmp.split('_')
-            print(params)
+            tmp = params['filename'].split('/')[-1].split('-')
+            params['study'], params['instrument'], params['column'] = tmp[0:3]
+            params['mode'] = [k for k in ION_MODES.keys() if tmp[3] in ION_MODES[k]][0]
         except ValueError as ve:
             print(
-                f'ERROR in filename: {params["filename"]}.\nIt should be <study name>_<instrument>_<column>_'
+                f'ERROR in filename: {params["filename"]}.\nIt should be <study name>-<instrument>-<column>-'
                 f'<ion mode>.csv')
 
         process(params)
@@ -134,7 +134,7 @@ if __name__ == "__main__":
     parser.add_argument('--formate', help='calculates the formated adduct from an acetate adduct',
                         dest='formate', default=False, action='store_true')
     parser.add_argument('-m', '--mode', help='ion mode. [\'positive\' or \'negative\']', default='positive',
-                        choices=['positive', 'negative'])
+                        choices=['positive', 'negative'], required=False)
     parser.add_argument('--new', help='read input with new style', default=False, action='store_true')
 
     args = parser.parse_args()
@@ -145,6 +145,7 @@ if __name__ == "__main__":
 
     def noop(self, *args, **kw):
         pass
+
 
     yaml.emitter.Emitter.process_tag = noop
 

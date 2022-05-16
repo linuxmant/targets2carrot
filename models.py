@@ -1,23 +1,26 @@
 from typing import Collection
 
-ION_MODES = ['posotive', 'negative']
+ION_MODES = {
+    'posotive': ['positive', 'pos', 'p', '+'],
+    'negative': ['negative', 'neg', 'n', '-']
+}
 
 
 class Target:
     def __init__(self, name, mz, rt, msms, rt_unit='minutes',
-                 is_istd=True, is_required=False, is_confirmed=True, zone=0,
+                 is_istd=True, is_required=False, is_confirmed=True, zone=None,
                  adduct=None, inchikey=None):
-        self.identifier = name.strip(" ") if adduct is None else name.strip(" ") + ' ' + adduct.strip(" ")
-        self.accurateMass = mz
-        self.retentionTime = rt
-        self.retentionTimeUnit = rt_unit
-        self.inchikey = inchikey
-        self.adduct = adduct
-        self.isInternalStandard = is_istd
-        self.requiredForCorrection = is_required
-        self.confirmed = is_confirmed
-        self.msms = msms
-        self.zone = zone
+        self.identifier: str = name.strip()
+        self.accurateMass: float = mz
+        self.retentionTime: float = rt
+        self.retentionTimeUnit: str = rt_unit.strip()
+        self.inchikey: str = inchikey.strip()
+        self.adduct: str = adduct.strip()
+        self.isInternalStandard: bool = is_istd
+        # self.requiredForCorrection: bool = is_required
+        self.confirmed: bool = is_confirmed
+        self.msms: str = msms.strip()
+        self.zone: int = zone
 
     def __str__(self):
         return repr(self)
@@ -27,13 +30,14 @@ class Target:
 
 
 class Config:
-    def __init__(self, name, instrument, targets: Collection[Target], desc=None, column='test', mode='positive'):
-        self.name = name
-        self.description = desc if desc is not None else self.name + ' description'
-        self.instrument = instrument
-        self.column = column
-        self.ion_mode = mode if mode in ION_MODES else 'positive'
-        self.targets = targets
+    def __init__(self, name: str, instrument: str, targets: Collection[Target], column: str = 'test',
+                 mode: str = 'positive', desc: str = None):
+        self.name: str = name
+        # self.description = desc if desc is not None else ''
+        self.instrument: str = instrument
+        self.column: str = column
+        self.ion_mode: str = mode
+        self.targets: Collection[Target] = targets
 
     def __str__(self):
         return repr(self)
@@ -44,7 +48,7 @@ class Config:
 
 class Library:
     def __init__(self, config: Config):
-        self.config = config
+        self.config = [config]
 
     def __str__(self):
         return repr(self)
