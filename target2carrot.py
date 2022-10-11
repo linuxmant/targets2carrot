@@ -43,7 +43,7 @@ def process_lab_format(params):
         targets = []
         tbar = tqdm(df.fillna('').to_dict(orient='records'))
         for target in tbar:
-            print(target.keys())
+
             try:
                 if any([x.lower() in target['name'].lower() for x in SKIP_NAMES]):
                     continue
