@@ -38,17 +38,21 @@ def process(params):
 
 def process_lab_format(params):
     try:
-        df = pd.read_csv(params['filename'] + params['ext'],
-                         usecols=['name', 'adduct', 'mz', 'rt(min)', 'inchikey', 'msms'])
+        df = pd.read_csv(params['filename'] + params['ext'], encoding='utf-8')
+                         # usecols=['name', 'adduct', 'mz', 'rt(min)', 'inchikey', 'msms'])
         targets = []
         tbar = tqdm(df.fillna('').to_dict(orient='records'))
         for target in tbar:
+            print(target.keys())
             try:
                 if any([x.lower() in target['name'].lower() for x in SKIP_NAMES]):
                     continue
 
-                t = Target(target['name'], target['mz'], target['rt(min)'], target['msms'],
-                           adduct=target['adduct'], inchikey=target['inchikey'])
+                t = Target(name=target['name'], mz=target['mz'], rt=target['rt(min)'],
+                           rt_unit='minutes', msms=target.get('msms', None),
+                           adduct=target['adduct'], inchikey=target.get('inchikey', None),
+                           is_istd=target.get('istd', False), tgt_type=params.get('target_type', 'istd'),
+                           origin=target.get('origin', None))
 
                 if params['formate'] and any([target['adduct'] in ADDUCTS_ACETATE]):
                     targets.append(calculate_formate(t))
@@ -72,9 +76,9 @@ def process_lab_format(params):
 
 def process_new_format(params):
     try:
-        df = pd.read_csv(params['filename'] + params['ext'],
-                         usecols=['index', 'name', 'retentionTime', 'retentionTimeUnit', 'accurateMass',
-                                  'confirmed', 'isInternalStandard', 'requiredForCorrection', 'msms'])
+        df = pd.read_csv(params['filename'] + params['ext'])
+                         # usecols=['index', 'name', 'retentionTime', 'retentionTimeUnit', 'accurateMass',
+                         #          'confirmed', 'isInternalStandard', 'requiredForCorrection', 'msms'])
         targets = []
         tbar = tqdm(df.fillna('').to_dict(orient='records'))
         for target in tbar:
@@ -83,8 +87,10 @@ def process_new_format(params):
                     continue
 
                 t = Target(name=target['name'], mz=target['accurateMass'], rt=target['retentionTime'],
-                           rt_unit=target['retentionTimeUnit'], msms=target['msms'],
-                           adduct=target['adduct'], inchikey=target['inchikey'])
+                           rt_unit=target.get('retentionTimeUnit', 'minutes'), msms=target['msms'],
+                           adduct=target['adduct'], inchikey=target.get('inchikey', None),
+                           is_istd=target.get('istd', False), tgt_type=params.get('target_type', 'istd'),
+                           origin=target.get('origin', None))
 
                 if params['formate'] and any([adduct in target['name'] for adduct in ADDUCTS_ACETATE]):
                     targets.append(calculate_formate(t))
@@ -122,8 +128,8 @@ def convert(params):
             params['mode'] = [k for k in ION_MODES.keys() if tmp[3] in ION_MODES[k]][0]
         except ValueError as ve:
             print(
-                f'ERROR in filename: {params["filename"]}.\nIt should be <study name>-<instrument>-<column>-'
-                f'<ion mode>.csv')
+                f'ERROR in filename: {params["filename"]}.\nIt should be <method name>-<instrument>-<column>-'
+                f'<ion mode>[-<extra>].csv')
 
         process(params)
 
@@ -139,6 +145,8 @@ if __name__ == "__main__":
                         dest='formate', default=False, action='store_true')
     parser.add_argument('-m', '--mode', help='ion mode. [\'positive\' or \'negative\']', default='positive',
                         choices=['positive', 'negative'], required=False)
+    parser.add_argument('-t', '--target_type', choices=['istd', 'manual'], required=False,
+                        help='The type of the targets (applies to all). [\'istd\' or \'manual\']', default='istd')
     parser.add_argument('--new', help='read input with new style', default=False, action='store_true')
 
     args = parser.parse_args()
@@ -149,6 +157,7 @@ if __name__ == "__main__":
 
     def noop(self, *args, **kw):
         pass
+
 
     yaml.emitter.Emitter.process_tag = noop
 

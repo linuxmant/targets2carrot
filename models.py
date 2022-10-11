@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Collection
 
 ION_MODES = {
@@ -5,11 +6,13 @@ ION_MODES = {
     'negative': ['negative', 'neg', 'n', '-']
 }
 
+TARGET_TYPES = {'istd': 'ISTD', 'manual': 'MANUAL_COMPOUND'}
+
 
 class Target:
-    def __init__(self, name, mz, rt, msms, rt_unit='minutes',
-                 is_istd=True, is_required=False, is_confirmed=True, zone=None,
-                 adduct=None, inchikey=None):
+    def __init__(self, name, mz, rt, msms, rt_unit,
+                 adduct, inchikey, tgt_type, origin,
+                 is_istd, is_required=False, is_confirmed=True, zone=None):
         self.identifier: str = name.strip()
         self.accurateMass: float = mz
         self.retentionTime: float = rt
@@ -17,9 +20,11 @@ class Target:
         self.inchikey: str = inchikey.strip()
         self.adduct: str = adduct.strip()
         self.isInternalStandard: bool = is_istd
-        # self.requiredForCorrection: bool = is_required
+        self.requiredForCorrection: bool = is_required
         self.confirmed: bool = is_confirmed
         self.msms: str = msms.strip()
+        self.type: str = TARGET_TYPES.get(tgt_type.lower())
+        self.origin: str = origin
         self.zone: int = zone
 
     def __str__(self):
