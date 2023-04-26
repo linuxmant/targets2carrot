@@ -13,6 +13,8 @@ from models import Target, Config, Library
 
 ADDUCTS_ACETATE = ['[M+HAc-H]-', '[M+Hac-H]-']
 SKIP_NAMES = ['CSH_posESI', 'CSH posESI', 'CSH_negESI', 'CSH negESI', 'unknown']
+REQUIRED_COLUMNS = ['index', 'name', 'retentionTime', 'retentionTimeUnit', 'accurateMass', 'type',
+                    'confirmed', 'isInternalStandard', 'requiredForCorrection', 'msms', 'adduct']
 
 
 def calculate_formate(target: Target):
@@ -72,9 +74,16 @@ def process_lab_format(params):
 
 def process_new_format(params):
     try:
-        df = pd.read_csv(params['filename'] + params['ext'],
-                         usecols=['index', 'name', 'retentionTime', 'retentionTimeUnit', 'accurateMass',
-                                  'confirmed', 'isInternalStandard', 'requiredForCorrection', 'msms'])
+        df = pd.read_csv(params['filename'] + params['ext'])
+
+        # check required columns are there
+        if not all([x in list(df.columns.tolist()) for x in REQUIRED_COLUMNS]):
+            raise Exception(f"Missing one or more required columns.\nRequired columns are: {REQUIRED_COLUMNS}")
+
+        # df = pd.read_csv(params['filename'] + params['ext'],
+        #                  usecols=['index', 'name', 'retentionTime', 'retentionTimeUnit', 'accurateMass',
+        #                           'confirmed', 'isInternalStandard', 'requiredForCorrection', 'msms'])
+
         targets = []
         tbar = tqdm(df.fillna('').to_dict(orient='records'))
         for target in tbar:
@@ -82,9 +91,11 @@ def process_new_format(params):
                 if any([x.lower() in target['name'].lower() for x in SKIP_NAMES]):
                     continue
 
-                t = Target(target['name'], target['accurateMass'], target['retentionTime'], target['retentionTimeUnit'],
-                           target['isInternalStandard'], target['requiredForCorrection'], target['confirmed'],
-                           target['msms'], 0)
+                t = Target(target['name'], target['accurateMass'], target['retentionTime'], target['msms'],
+                           target['retentionTimeUnit'], target['isInternalStandard'], target['requiredForCorrection'],
+                           target['confirmed'], 0, target['adduct'])
+
+                t.type = str(target.get('type', 'UNCONFIRMED')).upper()
 
                 if params['formate'] and any([adduct in target['name'] for adduct in ADDUCTS_ACETATE]):
                     targets.append(calculate_formate(t))
@@ -94,7 +105,7 @@ def process_new_format(params):
                 print(f'Error in target #{target["index"]} -- {params["filename"] + params["ext"]}')
                 exit(1)
 
-        config = Config(params['study'], params['instrument'], targets, params['mode'])
+        config = Config(params['study'], params['instrument'], targets, column=params['column'], mode=params['mode'])
 
         library = Library([config])
 

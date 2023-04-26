@@ -1,13 +1,18 @@
 from typing import Collection
 
-ION_MODES = ['posotive', 'negative']
+ION_MODES = ['positive', 'negative']
 
 
 class Target:
     def __init__(self, name, mz, rt, msms, rt_unit='minutes',
                  is_istd=True, is_required=False, is_confirmed=True, zone=0,
-                 adduct=None, inchikey=None):
-        self.identifier = name.strip(" ") if adduct is None else name.strip(" ") + ' ' + adduct.strip(" ")
+                 adduct='', inchikey=''):
+        if adduct is None or '':
+            clean_name = name.strip(' ')
+        else:
+            clean_name = name.strip(' ') + ' ' + adduct.strip(' ')
+
+        self.identifier = clean_name.strip(' ')
         self.accurateMass = mz
         self.retentionTime = rt
         self.retentionTimeUnit = rt_unit
@@ -18,6 +23,7 @@ class Target:
         self.confirmed = is_confirmed
         self.msms = msms
         self.zone = zone
+        self.type = 'UNCONFIRMED'
 
     def __str__(self):
         return repr(self)
