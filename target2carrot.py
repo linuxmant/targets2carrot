@@ -32,10 +32,56 @@ def calculate_formate(target: Target):
 
 
 def process(params):
+    if params['gc']:
+        process_gc_format(params)
+        quit()
+
     if params['new']:
         process_new_format(params)
     else:
         process_lab_format(params)
+
+
+def process_gc_format(params):
+    try:
+        df = pd.read_csv(params['filename'] + params['ext'], encoding='utf-8')
+        df.columns = df.columns.str.strip().str.lower()
+        rt_col = 'rt(sec)' if 'rt(sec)' in df.columns else 'ri'
+        rt_u = 'minutes' if 'rt(min)' in df.columns else 'seconds'
+
+        targets = []
+        tbar = tqdm(df.fillna('').to_dict(orient='records'))
+        for target in tbar:
+
+            try:
+                if any([x.lower() in target['name'].lower() for x in SKIP_NAMES]):
+                    continue
+
+                t = {'name':target['name'], 'mz':target['mz'], 'rt':target[rt_col],
+                           'rt_unit':rt_u, 'ri':target['ri'], 'msms':target.get('msms', None),
+                           'inchikey':target.get('inchikey', None),
+                           'is_istd':target.get('istd', True), 'tgt_type':params.get('target_type', 'istd'),
+                           'origin':target.get('origin', None), 'comment':target.get('comment', None),
+                           'quant_mz':target.get('quant mz', None), 'qualifier_ion':target.get('qualifier ion', None)}
+
+                targets.append(t)
+            except UnicodeEncodeError as err:
+                print(f'Error in target #{target["name"]} -- {params["filename"] + params["ext"]}')
+                exit(1)
+
+        config = Config(name=params['study'], instrument=params['instrument'], targets=targets, column=params['column'],
+                        mode=params['mode'])
+
+        library = Library(config)
+
+        save_yaml(library, params['outfile'])
+
+    except UnicodeDecodeError as err:
+        print(
+            f'Error in file {params["filename"] + params["ext"]}\n{str(err)}')
+        exit(1)
+
+
 
 
 def process_lab_format(params):
@@ -167,6 +213,7 @@ if __name__ == "__main__":
                         help='The type of the targets (applies to all). [\'istd\' or \'manual\']', default='istd')
     parser.add_argument('--new', help='read input with new style',
                         default=False, action='store_true')
+    parser.add_argument('--gc', help='cretes a gc library', action='store_true', default=False)
 
     args = parser.parse_args()
     if args.files == '__unknown__':
