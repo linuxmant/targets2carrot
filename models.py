@@ -1,29 +1,32 @@
+from enum import Enum
 from typing import Collection
 
 ION_MODES = ['positive', 'negative']
+ION_MODES = {
+    'positive': ['positive', 'pos', 'p', '+'],
+    'negative': ['negative', 'neg', 'n', '-']
+}
+
+TARGET_TYPES = {'istd': 'ISTD', 'manual': 'MANUAL_COMPOUND', 'validation': 'VALIDATION_ISTD'}
 
 
 class Target:
-    def __init__(self, name, mz, rt, msms, rt_unit='minutes',
-                 is_istd=True, is_required=False, is_confirmed=True, zone=0,
-                 adduct='', inchikey=''):
-        if adduct is None or '':
-            clean_name = name.strip(' ')
-        else:
-            clean_name = name.strip(' ') + ' ' + adduct.strip(' ')
-
-        self.identifier = clean_name.strip(' ')
-        self.accurateMass = mz
-        self.retentionTime = rt
-        self.retentionTimeUnit = rt_unit
-        self.inchikey = inchikey
-        self.adduct = adduct
-        self.isInternalStandard = is_istd
-        self.requiredForCorrection = is_required
-        self.confirmed = is_confirmed
-        self.msms = msms
-        self.zone = zone
-        self.type = 'UNCONFIRMED'
+    def __init__(self, name, mz, rt, msms, rt_unit, adduct, inchikey, tgt_type, origin, is_istd, is_required=False,
+                 is_confirmed=True, zone=None, comment=None):
+        self.identifier: str = name.strip()
+        self.accurateMass: float = mz
+        self.retentionTime: float = rt
+        self.retentionTimeUnit: str = rt_unit.strip()
+        self.inchikey: str = inchikey.strip()
+        self.adduct: str = adduct.strip()
+        self.isInternalStandard: bool = is_istd
+        self.requiredForCorrection: bool = is_required
+        self.confirmed: bool = is_confirmed
+        self.msms: str = msms.strip() if msms is not None else None
+        self.type: str = TARGET_TYPES.get(tgt_type.lower())
+        self.origin: str = origin
+        self.comment: str = comment
+        self.zone: int = zone
 
     def __str__(self):
         return repr(self)
@@ -33,13 +36,14 @@ class Target:
 
 
 class Config:
-    def __init__(self, name, instrument, targets: Collection[Target], desc=None, column='test', mode='positive'):
-        self.name = name
-        self.description = desc if desc is not None else self.name + ' description'
-        self.instrument = instrument
-        self.column = column
-        self.ion_mode = mode if mode in ION_MODES else 'positive'
-        self.targets = targets
+    def __init__(self, name: str, instrument: str, targets: Collection[Target], column: str = 'test',
+                 mode: str = 'positive', desc: str = None):
+        self.name: str = name
+        # self.description = desc if desc is not None else ''
+        self.instrument: str = instrument
+        self.column: str = column
+        self.ion_mode: str = mode
+        self.targets: Collection[Target] = targets
 
     def __str__(self):
         return repr(self)
@@ -49,8 +53,8 @@ class Config:
 
 
 class Library:
-    def __init__(self, config: [Config]):
-        self.config = config
+    def __init__(self, config: Config):
+        self.config = [config]
 
     def __str__(self):
         return repr(self)
