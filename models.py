@@ -42,7 +42,7 @@ class Config:
         # self.description = desc if desc is not None else ''
         self.instrument: str = instrument
         self.column: str = column
-        self.ion_mode: str = mode
+        self.ionMode: str = mode
         self.targets: Collection[Target] = targets
 
     def __str__(self):
