@@ -100,7 +100,7 @@ def process_lab_format(params):
                     continue
 
                 t = Target(name=target['name'], mz=target['mz'], rt=target[rt_col],
-                           rt_unit=rt_u, msms=target.get('msms', None), adduct=target['adduct'],
+                           rt_unit=rt_u, msms=target.get('msms', None), adduct=target.get('adduct', None),
                            inchikey=target.get('inchikey', None),
                            is_istd=target.get('istd', False), tgt_type=params.get('target_type', 'istd'),
                            origin=target.get('origin', None), comment=target.get('comment', None))
@@ -144,10 +144,10 @@ def process_new_format(params):
 
                 t = Target(name=target['name'], mz=target['accurateMass'], rt=target['retentionTime'],
                            rt_unit=target.get('retentionTimeUnit', 'minutes'), msms=target['msms'],
-                           adduct=target['adduct'], inchikey=target.get('inchikey', ''),
+                           adduct=target['adduct'], inchikey=target.get('inchikey', None),
                            is_istd=target.get('istd', False),
                            tgt_type=target.get('type', params.get('target_type', 'istd')),
-                           origin=target.get('origin', ''), comment=target.get('comment', ''))
+                           origin=target.get('origin', None), comment=target.get('comment', None))
 
                 if params['formate'] and any([adduct in target['name'] for adduct in ADDUCTS_ACETATE]):
                     targets.append(calculate_formate(t))
@@ -171,7 +171,7 @@ def process_new_format(params):
 
 def save_yaml(library, outfile):
     with open(outfile, 'w') as output:
-        yaml.dump(vars(library), output, explicit_start=False)
+        yaml.dump(vars(library), output, explicit_start=False, sort_keys=False)
         print(f'file {outfile} saved...')
 
 

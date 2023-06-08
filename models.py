@@ -7,23 +7,23 @@ ION_MODES = {
     'negative': ['negative', 'neg', 'n', '-']
 }
 
-TARGET_TYPES = {'istd': 'ISTD', 'manual': 'MANUAL_COMPOUND', 'validation': 'VALIDATION_ISTD'}
+TARGET_TYPES = {'istd': 'ISTD', 'manual': 'MANUAL_COMPOUND', 'validation': 'VALIDATION'}
 
 
 class Target:
-    def __init__(self, name, mz, rt, msms, rt_unit, adduct, inchikey, tgt_type, origin, is_istd, is_required=False,
-                 is_confirmed=True, zone=None, comment=None):
+    def __init__(self, name, mz, rt, msms, rt_unit, adduct, inchikey, tgt_type, origin, is_istd, 
+                 is_required=False, is_confirmed=True, zone=None, comment=None):
         self.identifier: str = name.strip()
         self.accurateMass: float = mz
+        self.adduct: str = adduct.strip()
         self.retentionTime: float = rt
         self.retentionTimeUnit: str = rt_unit.strip()
         self.inchikey: str = inchikey.strip()
-        self.adduct: str = adduct.strip()
         self.isInternalStandard: bool = is_istd
         self.requiredForCorrection: bool = is_required
         self.confirmed: bool = is_confirmed
-        self.msms: str = msms.strip() if msms is not None else None
         self.type: str = TARGET_TYPES.get(tgt_type.lower())
+        self.msms: str = msms.strip() if msms is not None else None
         self.origin: str = origin
         self.comment: str = comment
         self.zone: int = zone
