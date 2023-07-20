@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import builtins
+import csv
 import os
+import re
 
 import pandas as pd
 import yaml
@@ -15,18 +18,32 @@ SKIP_NAMES = ['CSH_posESI', 'CSH posESI', 'CSH_negESI', 'CSH negESI', 'unknown']
 REQUIRED_COLUMNS = ['index', 'name', 'retentionTime', 'retentionTimeUnit', 'accurateMass',
                     'confirmed', 'isInternalStandard', 'requiredForCorrection', 'msms', 'adduct']
 
+# backup builtin print
+old_print = print
+
+
+def new_print(*args, **kwargs):
+    # noinspection PyBroadException
+    # if tqdm.tqdm.write raises error, use builtin print
+    try:
+        tqdm.write(*args, **kwargs)
+    except Exception as e:
+        old_print(*args, **kwargs)
+
+
+# globally replace print with new_print
+builtins.print = new_print
+
 
 def calculate_formate(target: Target):
     """
     Creates a Formate adduct [M+FA-H]- from Acetate [M+HAc-H]- target (difference: −14.030202 Da)
-    :param experiment: name of experiment for which to get the list of files
 
     Args:
-        target:
+        target: target to reformat
     """
 
-    target.name = target.name.replace(
-        '[M+HAc-H]', '[M+FA-H]').replace('[M+Hac-H]', '[M+FA-H]')
+    target.name = target.name.replace('[M+HAc-H]', '[M+FA-H]').replace('[M+Hac-H]', '[M+FA-H]')
     target.accurateMass = target.accurateMass - 14.01565,
 
     return target
@@ -61,7 +78,8 @@ def process_gc_format(params):
                 t = {'name': target['name'], 'mz': target['mz'], 'rt': target[rt_col],
                      'rt_unit': rt_u, 'ri': target['ri'], 'msms': target.get('msms', None),
                      'inchikey': target.get('inchikey', None),
-                     'is_istd': target.get('istd', True), 'tgt_type': params.get('target_type', 'istd'),
+                     'is_istd': target.get('istd', True),
+                     'tgt_type': params.get('target_type', params.get('type', 'istd')),
                      'origin': target.get('origin', None), 'comment': target.get('comment', None),
                      'quant_mz': target.get('quant mz', None), 'qualifier_ion': target.get('qualifier ion', None)}
 
@@ -78,8 +96,7 @@ def process_gc_format(params):
         save_yaml(library, params['outfile'])
 
     except UnicodeDecodeError as err:
-        print(
-            f'Error in file {params["filename"] + params["ext"]}\n{str(err)}')
+        print(f'Error in file {params["filename"]}{params["ext"]}\n{str(err)}')
         exit(1)
 
 
@@ -102,16 +119,19 @@ def process_lab_format(params):
                 t = Target(name=target['name'], mz=target['mz'], rt=target[rt_col],
                            rt_unit=rt_u, msms=target.get('msms', None), adduct=target.get('adduct', None),
                            inchikey=target.get('inchikey', None),
-                           is_istd=target.get('istd', False), tgt_type=params.get('target_type', 'istd'),
+                           is_istd=target.get('istd', False),
+                           tgt_type=params.get('target_type', params.get('type', 'istd')),
                            origin=target.get('origin', None), comment=target.get('comment', None))
+
+                if not t.isInternalStandard and t.type == 'istd':
+                    t.isInternalStandard = True
 
                 if params['formate'] and any([target['adduct'] in ADDUCTS_ACETATE]):
                     targets.append(calculate_formate(t))
                 else:
                     targets.append(t)
             except UnicodeEncodeError as err:
-                print(
-                    f'Error in target #{target["name"]} -- {params["filename"] + params["ext"]}')
+                print(f'Error in target #{target["name"]} -- {params["filename"]}{params["ext"]}')
                 exit(1)
 
         config = Config(name=params['study'], instrument=params['instrument'], targets=targets, column=params['column'],
@@ -142,19 +162,14 @@ def process_new_format(params):
                 if any([x.lower() in target['name'].lower() for x in SKIP_NAMES]):
                     continue
 
-                t = Target(name=target['name'], mz=target['accurateMass'], rt=target['retentionTime'],
-                           rt_unit=target.get('retentionTimeUnit', 'minutes'), msms=target['msms'],
-                           adduct=target['adduct'], inchikey=target.get('inchikey', None),
-                           is_istd=target.get('istd', False),
-                           tgt_type=target.get('type', params.get('target_type', 'istd')),
-                           origin=target.get('origin', None), comment=target.get('comment', None))
+                t = Target.from_dict(target)
 
                 if params['formate'] and any([adduct in target['name'] for adduct in ADDUCTS_ACETATE]):
                     targets.append(calculate_formate(t))
                 else:
                     targets.append(t)
             except UnicodeEncodeError as err:
-                print(f'Error in target #{target["index"]} -- {params["filename"] + params["ext"]}')
+                print(f'Error in target #{target["index"]} -- {params["filename"]}{params["ext"]}')
                 exit(1)
 
         config = Config(params['study'], params['instrument'], targets,
@@ -165,7 +180,7 @@ def process_new_format(params):
         save_yaml(library, params['outfile'])
 
     except UnicodeDecodeError as err:
-        print(f'Error in file {params["filename"] + params["ext"]}\n{str(err)}')
+        print(f'Error in file {params["filename"]}{params["ext"]}\n{str(err)}')
         exit(1)
 
 
@@ -175,24 +190,54 @@ def save_yaml(library, outfile):
         print(f'file {outfile} saved...')
 
 
+def convert_csv(params):
+    with open(params['filename'] + params['ext'], 'r') as fin:
+        data = yaml.safe_load(fin)
+
+    lib = Library(config=data['config'][0]).config
+
+    save_csv(lib.targets, params['outfile'])
+
+
+def save_csv(targets, outfile):
+    outfile = outfile.replace('.yml', '.csv').rsplit('/')[-1]
+    print(f'Saving file: {outfile}')
+
+    with open(outfile, 'w', ) as csvfile:
+        writer = csv.writer(csvfile, quoting=csv.QUOTE_NONNUMERIC)
+        writer.writerow(['name', 'accurateMass', 'adduct', 'retentionTime', 'retentionTimeUnit', 'target_type',
+                         'inchikey', 'confirmed', 'msms'])
+
+        for target in targets:
+            writer.writerow(target.to_csv())
+
+
 def convert(params):
     for fileidx in trange(len(params['files'])):
         params['filename'], params['ext'] = os.path.splitext(params['files'][fileidx])
         params['outfile'] = params.get('filename', '').replace(' ', '') + '.yml'
 
-        try:
-            tmp = params['filename'].split('/')[-1].split('-')
-            params['study'], params['instrument'], params['column'] = tmp[0:3]
-            params['mode'] = [k for k in ION_MODES.keys() if tmp[3] in ION_MODES[k]][0]
+        if re.match(r'\.ya?ml', params['ext']):
+            print('Input file is YAML, only converting to CSV')
+            try:
+                convert_csv(params)
+            except Exception as ex:
+                message = f"{ex.__class__.__name__} {str(ex)} processing {params['filename']}{params['ext']}"
+                print(message)
 
-            print(f"Method: {params['study']}, Instrument: {params['instrument']}, "
-                  f"Column: {params['column']}, Ionization: {params['mode']}\n")
-        except ValueError as ve:
-            print(
-                f'ERROR in filename: {params["filename"]}.\nIt should be <method name>-<instrument>-<column>-'
-                f'<ion mode>[-<extra>].csv')
+        else:
+            try:
+                tmp = params['filename'].split('/')[-1].split('-')
+                params['study'], params['instrument'], params['column'] = tmp[0:3]
+                params['mode'] = [k for k in ION_MODES.keys() if tmp[3] in ION_MODES[k]][0]
 
-        process(params)
+                print(f"Method: {params['study']}, Instrument: {params['instrument']}, "
+                      f"Column: {params['column']}, Ionization: {params['mode']}\n")
+            except ValueError as ve:
+                print(f'ERROR in filename: {params["filename"]}. '
+                      f'It should be <method name>-<instrument>-<column>-<ion mode>[-<extra>].csv')
+
+            process(params)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Collection
 
 ION_MODES = ['positive', 'negative']
@@ -11,14 +10,29 @@ TARGET_TYPES = {'istd': 'ISTD', 'manual': 'MANUAL_COMPOUND', 'validation': 'VALI
 
 
 class Target:
-    def __init__(self, name, mz, rt, msms, rt_unit, adduct, inchikey, tgt_type, origin, is_istd, 
+    identifier: str
+    accurateMass: float
+    adduct: str
+    retentionTime: float
+    retentionTimeUnit: str
+    inchikey: str
+    isInternalStandard: bool
+    requiredForCorrection: bool
+    confirmed: bool
+    type: str
+    msms: str
+    origin: str
+    comment: str
+    zone: int = None
+
+    def __init__(self, name, mz, rt, msms, rt_unit, adduct, inchikey, tgt_type, origin, is_istd,
                  is_required=False, is_confirmed=True, zone=None, comment=None):
-        self.identifier: str = name.strip()
+        self.identifier: str = name.strip() if name is not None else None
         self.accurateMass: float = mz
-        self.adduct: str = adduct.strip()
+        self.adduct: str = adduct.strip() if adduct is not None else None
         self.retentionTime: float = rt
         self.retentionTimeUnit: str = rt_unit.strip()
-        self.inchikey: str = inchikey.strip()
+        self.inchikey: str = inchikey.strip() if inchikey is not None else None
         self.isInternalStandard: bool = is_istd
         self.requiredForCorrection: bool = is_required
         self.confirmed: bool = is_confirmed
@@ -34,8 +48,26 @@ class Target:
     def __repr__(self):
         return str(self.__dict__)
 
+    @staticmethod
+    def from_dict(target: dict):
+        return Target(name=target.get('name', target.get('identifier')), mz=target['accurateMass'],
+                      rt=target['retentionTime'], rt_unit=target.get('retentionTimeUnit', 'minutes'),
+                      msms=target.get('msms', None), adduct=target.get('adduct', None), inchikey=target.get('inchikey', None),
+                      is_istd=target.get('istd', False), tgt_type=target.get('type', target.get('target_type', 'istd')),
+                      origin=target.get('origin', None), comment=target.get('comment', None))
+
+    def to_csv(self) -> list:
+        return [self.identifier, self.accurateMass, self.adduct, self.retentionTime,
+                self.retentionTimeUnit, self.type, self.inchikey, self.confirmed, self.msms]
+
 
 class Config:
+    name: str
+    instrument: str
+    column: str
+    ionMode: str
+    targets: Collection[Target]
+
     def __init__(self, name: str, instrument: str, targets: Collection[Target], column: str = 'test',
                  mode: str = 'positive', desc: str = None):
         self.name: str = name
@@ -53,8 +85,16 @@ class Config:
 
 
 class Library:
-    def __init__(self, config: Config):
-        self.config = [config]
+    config: Config
+
+    def __init__(self, config):
+        if isinstance(config, Config):
+            self.config = config
+        else:
+            targets = [Target.from_dict(t) for t in config['targets']]
+
+            self.config = Config(config['name'], config['instrument'], targets, config['column'],
+                                 config.get('ionMode', config.get('ion_mode')))
 
     def __str__(self):
         return repr(self)
