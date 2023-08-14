@@ -118,9 +118,7 @@ def process_lab_format(params):
                 t = Target(name=target['name'], mz=target['mz'], rt=target[rt_col],
                            rt_unit=rt_u, msms=target.get('msms', None), adduct=target.get('adduct', None),
                            inchikey=target.get('inchikey', None),
-                           is_istd=target.get('istd', False),
-                           tgt_type=params.get('target_type', params.get('type', 'istd')),
-                           origin=target.get('origin', None), comment=target.get('comment', None))
+                           tgt_type=params.get('target_type', params.get('type', 'istd')))
 
                 if not t.isInternalStandard and t.type == 'istd':
                     t.isInternalStandard = True
