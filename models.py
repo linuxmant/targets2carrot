@@ -46,7 +46,7 @@ class Target:
 
     def to_csv(self) -> list:
         return [self.identifier, self.accurateMass, self.adduct, self.retentionTime,
-                self.retentionTimeUnit, self.type, self.inchikey, self.confirmed, self.msms]
+                self.retentionTimeUnit, self.type, self.inchikey, self.msms]
 
 
 class Config:
@@ -58,10 +58,10 @@ class Config:
 
     def __init__(self, name: str, instrument: str, targets: Collection[Target], column: str = 'test',
                  mode: str = 'positive', desc: str = None):
-        self.name: str = name
+        self.name: str = name.replace('_', ' ')
         # self.description = desc if desc is not None else ''
-        self.instrument: str = instrument
-        self.column: str = column
+        self.instrument: str = instrument.replace('_', ' ')
+        self.column: str = column.replace('_', ' ')
         self.ionMode: str = mode
         self.targets: Collection[Target] = targets
 
@@ -73,16 +73,16 @@ class Config:
 
 
 class Library:
-    config: Config
+    config: [Config]
 
     def __init__(self, config):
         if isinstance(config, Config):
-            self.config = config
+            self.config = [config]
         else:
             targets = [Target.from_dict(t) for t in config['targets']]
 
-            self.config = Config(config['name'], config['instrument'], targets, config['column'],
-                                 config.get('ionMode', config.get('ion_mode')))
+            self.config = [Config(config['name'], config['instrument'], targets, config['column'],
+                                 config.get('ionMode', config.get('ion_mode')))]
 
     def __str__(self):
         return repr(self)

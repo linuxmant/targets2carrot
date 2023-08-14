@@ -15,8 +15,7 @@ from models import Target, Config, Library, ION_MODES
 
 ADDUCTS_ACETATE = ['[M+HAc-H]-', '[M+Hac-H]-']
 SKIP_NAMES = ['CSH_posESI', 'CSH posESI', 'CSH_negESI', 'CSH negESI', 'unknown']
-REQUIRED_COLUMNS = ['index', 'name', 'accurateMass', 'adduct',
-                    'retentionTime', 'retentionTimeUnit', 'msms']
+REQUIRED_COLUMNS = ['index', 'name', 'accurateMass', 'adduct', 'retentionTime', 'retentionTimeUnit', 'msms']
 
 # backup builtin print
 old_print = print
@@ -148,7 +147,6 @@ def process_lab_format(params):
 
 
 def process_new_format(params):
-    print('processing new format...')
     try:
         df = pd.read_csv(params['filename'] + params['ext'])
 
@@ -219,7 +217,6 @@ def save_csv(targets, outfile):
 
 
 def convert(params):
-    print('converting...')
     for fileidx in trange(len(params['files'])):
         params['filename'], params['ext'] = os.path.splitext(params['files'][fileidx])
         params['outfile'] = params.get('filename', '').replace(' ', '') + '.yml'
@@ -272,7 +269,6 @@ if __name__ == "__main__":
 
     def noop(self, *args, **kw):
         pass
-
 
     yaml.emitter.Emitter.process_tag = noop
 
