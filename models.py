@@ -17,30 +17,19 @@ class Target:
     retentionTimeUnit: str
     inchikey: str
     isInternalStandard: bool
-    requiredForCorrection: bool
-    confirmed: bool
     type: str
     msms: str
-    origin: str
-    comment: str
-    zone: int = None
 
-    def __init__(self, name, mz, rt, msms, rt_unit, adduct, inchikey, tgt_type, origin, is_istd,
-                 is_required=False, is_confirmed=True, zone=None, comment=None):
+    def __init__(self, name, mz, rt, msms, rt_unit, adduct, inchikey, tgt_type):
         self.identifier: str = name.strip() if name is not None else None
         self.accurateMass: float = mz
         self.adduct: str = adduct.strip() if adduct is not None else None
         self.retentionTime: float = rt
         self.retentionTimeUnit: str = rt_unit.strip()
         self.inchikey: str = inchikey.strip() if inchikey is not None else None
-        self.isInternalStandard: bool = is_istd
-        self.requiredForCorrection: bool = is_required
-        self.confirmed: bool = is_confirmed
+        self.isInternalStandard: bool = tgt_type.lower() == 'istd'
         self.type: str = TARGET_TYPES.get(tgt_type.lower())
         self.msms: str = msms.strip() if msms is not None else None
-        self.origin: str = origin
-        self.comment: str = comment
-        self.zone: int = zone
 
     def __str__(self):
         return repr(self)
@@ -53,8 +42,7 @@ class Target:
         return Target(name=target.get('name', target.get('identifier')), mz=target['accurateMass'],
                       rt=target['retentionTime'], rt_unit=target.get('retentionTimeUnit', 'minutes'),
                       msms=target.get('msms', None), adduct=target.get('adduct', None), inchikey=target.get('inchikey', None),
-                      is_istd=target.get('istd', False), tgt_type=target.get('type', target.get('target_type', 'istd')),
-                      origin=target.get('origin', None), comment=target.get('comment', None))
+                      tgt_type=target.get('type', target.get('target_type', 'istd')))
 
     def to_csv(self) -> list:
         return [self.identifier, self.accurateMass, self.adduct, self.retentionTime,

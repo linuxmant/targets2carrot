@@ -15,8 +15,8 @@ from models import Target, Config, Library, ION_MODES
 
 ADDUCTS_ACETATE = ['[M+HAc-H]-', '[M+Hac-H]-']
 SKIP_NAMES = ['CSH_posESI', 'CSH posESI', 'CSH_negESI', 'CSH negESI', 'unknown']
-REQUIRED_COLUMNS = ['index', 'name', 'retentionTime', 'retentionTimeUnit', 'accurateMass',
-                    'confirmed', 'isInternalStandard', 'requiredForCorrection', 'msms', 'adduct']
+REQUIRED_COLUMNS = ['index', 'name', 'accurateMass', 'adduct',
+                    'retentionTime', 'retentionTimeUnit', 'msms']
 
 # backup builtin print
 old_print = print
@@ -148,6 +148,7 @@ def process_lab_format(params):
 
 
 def process_new_format(params):
+    print('processing new format...')
     try:
         df = pd.read_csv(params['filename'] + params['ext'])
 
@@ -158,6 +159,7 @@ def process_new_format(params):
         targets = []
         tbar = tqdm(df.fillna('').to_dict(orient='records'))
         for target in tbar:
+            print(target['name'])
             try:
                 if any([x.lower() in target['name'].lower() for x in SKIP_NAMES]):
                     continue
@@ -171,6 +173,10 @@ def process_new_format(params):
             except UnicodeEncodeError as err:
                 print(f'Error in target #{target["index"]} -- {params["filename"]}{params["ext"]}')
                 exit(1)
+            except SyntaxError as syn:
+                print(f'Error in target #{target["index"]} -- {params["filename"]}{params["ext"]}')
+                exit(1)
+
 
         config = Config(params['study'], params['instrument'], targets,
                         column=params['column'], mode=params['mode'])
@@ -213,6 +219,7 @@ def save_csv(targets, outfile):
 
 
 def convert(params):
+    print('converting...')
     for fileidx in trange(len(params['files'])):
         params['filename'], params['ext'] = os.path.splitext(params['files'][fileidx])
         params['outfile'] = params.get('filename', '').replace(' ', '') + '.yml'
@@ -226,6 +233,7 @@ def convert(params):
                 print(message)
 
         else:
+            print('Input file is CSV, converting to YAML')
             try:
                 tmp = params['filename'].split('/')[-1].split('-')
                 params['study'], params['instrument'], params['column'] = tmp[0:3]
@@ -245,8 +253,7 @@ if __name__ == "__main__":
 
     parser.add_argument('files', metavar='file', type=str, nargs='+',
                         help='list of files csv/txt with the list of targets with headers: '
-                             'index, name, retentionTime, retentionTimeUnit, accurateMass,'
-                             'confirmed, isInternalStandard, requiredForcorrection, msms')
+                             'index, name, accurateMass, adduct, retentionTime, retentionTimeUnit, msms')
     parser.add_argument('--formate', help='calculates the formated adduct from an acetate adduct',
                         dest='formate', default=False, action='store_true')
     parser.add_argument('-m', '--mode', help='ion mode. [\'positive\' or \'negative\']', default='positive',
