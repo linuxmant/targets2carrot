@@ -51,7 +51,7 @@ class Target:
 
     def to_csv(self) -> list:
         return [self.identifier, self.accurateMass, self.adduct, self.retentionTime,
-                self.retentionTimeUnit, self.type, self.inchikey, self.confirmed, self.msms]
+                self.retentionTimeUnit, self.type, self.inchikey, self.msms]
 
 
 class Config:
