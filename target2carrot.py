@@ -12,8 +12,8 @@ from models import Target, Config, Library, ION_MODES
 
 ADDUCTS_ACETATE = ['[M+HAc-H]-', '[M+Hac-H]-']
 SKIP_NAMES = ['CSH_posESI', 'CSH posESI', 'CSH_negESI', 'CSH negESI', 'unknown']
-REQUIRED_COLUMNS = ['index', 'name', 'retentionTime', 'retentionTimeUnit', 'accurateMass',
-                    'confirmed', 'isInternalStandard', 'requiredForCorrection', 'msms', 'adduct']
+REQUIRED_COLUMNS = ['name', 'retentionTime', 'retentionTimeUnit', 'accurateMass',
+                    'confirmed', 'msms', 'adduct']
 
 
 def calculate_formate(target: Target):
@@ -52,7 +52,7 @@ def process_gc_format(params):
 
         targets = []
         tbar = tqdm(df.fillna('').to_dict(orient='records'))
-        for target in tbar:
+        for index, target in enumerate(tbar):
 
             try:
                 if any([x.lower() in target['name'].lower() for x in SKIP_NAMES]):
@@ -62,12 +62,11 @@ def process_gc_format(params):
                      'rt_unit': rt_u, 'ri': target['ri'], 'msms': target.get('msms', None),
                      'inchikey': target.get('inchikey', None),
                      'is_istd': target.get('istd', True), 'tgt_type': params.get('target_type', 'istd'),
-                     'origin': target.get('origin', None), 'comment': target.get('comment', None),
                      'quant_mz': target.get('quant mz', None), 'qualifier_ion': target.get('qualifier ion', None)}
 
                 targets.append(t)
             except UnicodeEncodeError as err:
-                print(f'Error in target #{target["name"]} -- {params["filename"] + params["ext"]}')
+                print(f'Error in target #{index} -- {params["filename"] + params["ext"]}')
                 exit(1)
 
         config = Config(name=params['study'], instrument=params['instrument'], targets=targets, column=params['column'],
@@ -93,17 +92,21 @@ def process_lab_format(params):
 
         targets = []
         tbar = tqdm(df.fillna('').to_dict(orient='records'))
-        for target in tbar:
+        for index, target in enumerate(tbar):
 
             try:
                 if any([x.lower() in target['name'].lower() for x in SKIP_NAMES]):
                     continue
 
-                t = Target(name=target['name'], mz=target['mz'], rt=target[rt_col],
-                           rt_unit=rt_u, msms=target.get('msms', None), adduct=target.get('adduct', None),
+                t = Target(name=target['name'], 
+                           mz=target['mz'], 
+                           rt=target[rt_col],
+                           rt_unit=rt_u, 
+                           msms=target.get('msms', None), 
+                           adduct=target.get('adduct', None),
                            inchikey=target.get('inchikey', None),
-                           is_istd=target.get('istd', False), tgt_type=params.get('target_type', 'istd'),
-                           origin=target.get('origin', None), comment=target.get('comment', None))
+                           is_istd=True if params.get('target_type', '').lower() == 'istd' else False, 
+                           tgt_type=params.get('target_type', 'istd').lower())
 
                 if params['formate'] and any([target['adduct'] in ADDUCTS_ACETATE]):
                     targets.append(calculate_formate(t))
@@ -111,7 +114,7 @@ def process_lab_format(params):
                     targets.append(t)
             except UnicodeEncodeError as err:
                 print(
-                    f'Error in target #{target["name"]} -- {params["filename"] + params["ext"]}')
+                    f'Error in target #{index} -- {params["filename"] + params["ext"]}')
                 exit(1)
 
         config = Config(name=params['study'], instrument=params['instrument'], targets=targets, column=params['column'],
@@ -137,28 +140,35 @@ def process_new_format(params):
 
         targets = []
         tbar = tqdm(df.fillna('').to_dict(orient='records'))
-        for target in tbar:
+        for index, target in enumerate(tbar):
             try:
                 if any([x.lower() in target['name'].lower() for x in SKIP_NAMES]):
                     continue
 
-                t = Target(name=target['name'], mz=target['accurateMass'], rt=target['retentionTime'],
-                           rt_unit=target.get('retentionTimeUnit', 'minutes'), msms=target['msms'],
-                           adduct=target['adduct'], inchikey=target.get('inchikey', None),
-                           is_istd=target.get('istd', False),
-                           tgt_type=target.get('type', params.get('target_type', 'istd')),
-                           origin=target.get('origin', None), comment=target.get('comment', None))
+                # print(target.keys())
+                # print(params.keys())
+                target_type = target.get('type', target.get('target_type', params.get('target_type', 'istd'))).lower()
+
+                t = Target(name=target['name'], 
+                           mz=target['accurateMass'], 
+                           rt=target['retentionTime'],
+                           rt_unit=target.get('retentionTimeUnit', 'minutes'), 
+                           msms=target['msms'],
+                           adduct=target['adduct'], 
+                           inchikey=target.get('inchikey', None),
+                           is_istd= target_type == 'istd', 
+                           tgt_type=target_type)
 
                 if params['formate'] and any([adduct in target['name'] for adduct in ADDUCTS_ACETATE]):
                     targets.append(calculate_formate(t))
                 else:
                     targets.append(t)
             except UnicodeEncodeError as err:
-                print(f'Error in target #{target["index"]} -- {params["filename"] + params["ext"]}')
+                print(f'Error in target #{index} -- {params["filename"] + params["ext"]}')
                 exit(1)
 
-        config = Config(params['study'], params['instrument'], targets,
-                        column=params['column'], mode=params['mode'])
+        config = Config(params['study'].replace('_', ' '), params['instrument'].replace('_', ' '), targets,
+                        column=params['column'].replace('_', ' '), mode=params['mode'])
 
         library = Library(config)
 
