@@ -171,7 +171,6 @@ def process_new_format(params):
                            msms=target['msms'],
                            adduct=target['adduct'],
                            inchikey=target.get('inchikey', None),
-                           is_istd=target_type == 'istd',
                            tgt_type=target_type)
 
                 if params['formate'] and any([adduct in target['name'] for adduct in ADDUCTS_ACETATE]):
@@ -245,7 +244,8 @@ def convert(params):
                 print(f"Method: {params['study']}, Instrument: {params['instrument']}, "
                       f"Column: {params['column']}, Ionization: {params['mode']}\n")
             except ValueError as ve:
-                print(f'ERROR in filename: {params["filename"]}. '
+                print(f'ERROR in filename: {params["filename"]}.\n'
+                      'Spaces should be replaced with \'_\'\n'
                       f'It should be <method name>-<instrument>-<column>-<ion mode>[-<extra>].csv')
 
             process(params)
